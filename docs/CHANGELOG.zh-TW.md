@@ -4,6 +4,15 @@
 
 本檔記錄 usage 所有重要變更。格式參考 [Keep a Changelog](https://keepachangelog.com/)。
 
+## [Unreleased]
+
+### 新增
+- **選單列可以顯示超過三個來源。** 在 `~/.claude/usage-preferences.json` 設定 `"menubar_max_items"`，數字 1 到 5；預設仍是 3，因為選單列太寬會滑到瀏海後面。可見的來源比這個數字多時，跟以前一樣保留用量最高的幾個。
+- **選單列可以顯示 Muse 的每週百分比。** 在同一個檔案設定 `"muse_menubar_window": "weekly"`；預設是 5 小時視窗。
+
+### 修正
+- **選了 Argon 時，Antigravity 不會再從選單列消失。** Argon 只有每週額度，選單列讀的 5 小時百分比是空的，Antigravity 就從選單列上不見了。現在改顯示 Argon 的每週百分比。
+
 ## [0.34.7] - 2026-10-23
 
 ### 修正

@@ -5,6 +5,15 @@
 All notable changes to usage are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Added
+- **The menu bar can show more than three sources.** Set `"menubar_max_items"` in `~/.claude/usage-preferences.json` to a number from 1 to 5; the default stays 3, because a wider strip slides behind the notch. When more sources are visible than that, the highest-usage ones are kept, as before.
+- **The menu bar can show Muse's weekly percentage.** Set `"muse_menubar_window": "weekly"` in the same file; the default is the 5-hour window.
+
+### Fixed
+- **Antigravity stays in the menu bar when Argon is selected.** Argon has a weekly limit only, so the 5-hour percentage the menu bar reads was empty and Antigravity disappeared from the strip. It now shows Argon's weekly percentage.
+
 ## [0.34.7] - 2026-10-23
 
 ### Fixed

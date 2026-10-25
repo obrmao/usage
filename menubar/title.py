@@ -63,12 +63,12 @@ def _menubar_text_string(app: _TitleApp, text: str) -> Any:
     return attributed
 
 
-# A wider strip slides behind the notch; the panel still lists every source.
-_MENUBAR_MAX_ITEMS = 3
-
-
 def _menubar_items(app: _TitleApp, state: PopoverState) -> list[tuple[Callable[[], Any], str]]:
-    """Visible (icon loader, percent text) pairs, keeping the highest-usage sources in order."""
+    """Visible (icon loader, percent text) pairs, keeping the highest-usage sources in order.
+
+    A wider strip slides behind the notch, so only `state.menubar_max_items` survive;
+    the panel still lists every source.
+    """
     items: list[tuple[Callable[[], Any], float | None]] = []
     if not state.hide_claude:
         items.append((_claude_menubar_icon, state.claude_session.display_percent))
@@ -78,18 +78,22 @@ def _menubar_items(app: _TitleApp, state: PopoverState) -> list[tuple[Callable[[
         )
         codex_used = 0.0 if codex_row.reset_done else app.codex_5h_pct
         items.append((_codex_menubar_icon, None if codex_used is None else float(codex_used)))
+    # A weekly-only group (Argon) has no 5-hour row; without the weekly one
+    # Antigravity would drop out of the strip entirely.
+    agy_row = state.agy_weekly if state.agy_weekly_only else state.agy_session
+    muse_row = state.muse_weekly if state.muse_menubar_weekly else state.muse_session
     for hidden, icon, percent in (
-        (state.hide_agy, _agy_menubar_icon, state.agy_session.display_percent),
+        (state.hide_agy, _agy_menubar_icon, agy_row.display_percent),
         (state.hide_grok, _grok_menubar_icon, state.grok_weekly.display_percent),
-        (state.hide_muse, _muse_menubar_icon, state.muse_session.display_percent),
+        (state.hide_muse, _muse_menubar_icon, muse_row.display_percent),
     ):
         if not hidden and percent is not None:
             items.append((icon, percent))
-    if len(items) > _MENUBAR_MAX_ITEMS:
+    if len(items) > state.menubar_max_items:
         # Stable sort, so ties keep the fixed order; an unknown "--" ranks last.
         ranks = [-1.0 if percent is None else percent for _icon, percent in items]
         ranked = sorted(range(len(items)), key=ranks.__getitem__, reverse=True)
-        items = [items[i] for i in sorted(ranked[:_MENUBAR_MAX_ITEMS])]
+        items = [items[i] for i in sorted(ranked[: state.menubar_max_items])]
     return [
         (icon, "--" if percent is None else f"{_format_percent(percent)}%")
         for icon, percent in items

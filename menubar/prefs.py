@@ -14,6 +14,7 @@ DEFAULT_QUOTA_CARD_ORDER = ("claude", "codex", "agy", "grok", "muse")
 DEFAULT_PANEL_FLAVOR = "mocha"
 PANEL_FLAVORS = ("latte", "frappe", "macchiato", "mocha")
 AGY_QUOTA_GROUPS = ("gemini", "claude_gpt", "argon")
+DEFAULT_MENUBAR_MAX_ITEMS = 3
 
 
 def _resolved_preferences(prefs: Mapping[str, object] | None = None) -> Mapping[str, object]:
@@ -142,3 +143,18 @@ def _quota_notification_thresholds(prefs: Mapping[str, object] | None = None) ->
         if isinstance(value, int | float) and 0 < float(value) <= 100:
             thresholds.append(float(value))
     return thresholds or [90.0]
+
+
+def _menubar_max_items(prefs: Mapping[str, object] | None = None) -> int:
+    # Hand-edited key: the strip slides behind the notch past three sources,
+    # so a wider one is opt-in for people without a notch or with spare room.
+    data = _resolved_preferences(prefs)
+    value = data.get("menubar_max_items")
+    if isinstance(value, bool) or not isinstance(value, int):
+        return DEFAULT_MENUBAR_MAX_ITEMS
+    return max(1, min(value, len(DEFAULT_QUOTA_CARD_ORDER)))
+
+
+def _muse_menubar_weekly(prefs: Mapping[str, object] | None = None) -> bool:
+    data = _resolved_preferences(prefs)
+    return data.get("muse_menubar_window") == "weekly"

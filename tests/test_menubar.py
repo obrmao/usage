@@ -1793,6 +1793,62 @@ def test_compose_title_keeps_three_highest_in_fixed_order(
     assert menubar_title._compose_title(delegate, state) == "37% · 0% · 50%"
 
 
+def test_compose_title_keeps_more_sources_when_max_items_raised(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(menubar, "_load_preferences", lambda: {})
+    delegate = menubar.AppDelegate.alloc().initWithMock_interval_(True, 60)
+    delegate.codex_5h_pct = 37.0
+    state = menubar._empty_state()
+    state.claude_session.percent = 2.0
+    state.agy_session.percent = 0.0
+    state.muse_session.percent = 12.0
+    state.hide_agy = False
+    state.hide_muse = False
+    state.menubar_max_items = 4
+
+    assert menubar_title._compose_title(delegate, state) == "2% · 37% · 0% · 12%"
+
+    state.menubar_max_items = 1
+    assert menubar_title._compose_title(delegate, state) == "37%"
+
+
+def test_compose_title_shows_weekly_for_weekly_only_agy_group(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(menubar, "_load_preferences", lambda: {})
+    delegate = menubar.AppDelegate.alloc().initWithMock_interval_(True, 60)
+    state = menubar._empty_state()
+    state.hide_claude = True
+    state.hide_codex = True
+    state.hide_agy = False
+    state.agy_session.percent = None
+    state.agy_weekly.percent = 94.0
+
+    # Argon has no 5-hour window, so the session row alone would drop Antigravity.
+    assert menubar_title._compose_title(delegate, state) == "usage"
+    state.agy_weekly_only = True
+    assert menubar_title._compose_title(delegate, state) == "94%"
+
+
+def test_compose_title_shows_muse_weekly_when_preferred(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(menubar, "_load_preferences", lambda: {})
+    delegate = menubar.AppDelegate.alloc().initWithMock_interval_(True, 60)
+    state = menubar._empty_state()
+    state.hide_claude = True
+    state.hide_codex = True
+    state.hide_agy = True
+    state.hide_muse = False
+    state.muse_session.percent = 12.0
+    state.muse_weekly.percent = 64.0
+
+    assert menubar_title._compose_title(delegate, state) == "12%"
+    state.muse_menubar_weekly = True
+    assert menubar_title._compose_title(delegate, state) == "64%"
+
+
 def test_compose_title_omits_grok_without_percent(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(menubar, "_load_preferences", lambda: {})
     delegate = menubar.AppDelegate.alloc().initWithMock_interval_(True, 60)

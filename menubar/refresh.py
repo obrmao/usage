@@ -31,6 +31,8 @@ from menubar.prefs import (
     _hide_codex_enabled,
     _hide_grok_enabled,
     _hide_muse_enabled,
+    _menubar_max_items,
+    _muse_menubar_weekly,
     _quota_card_order,
 )
 from quota import quota_snapshot
@@ -288,6 +290,8 @@ def build_result(app: _RefreshApp, sources: RefreshSources) -> dict[str, Any]:
         state.hide_grok = hide_grok
         state.card_order = card_order
 
+    state.menubar_max_items = _menubar_max_items()
+    state.muse_menubar_weekly = _muse_menubar_weekly()
     if not app.mock:
         quota_snapshot.write_snapshot()
     return {

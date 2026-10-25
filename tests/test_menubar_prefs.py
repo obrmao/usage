@@ -133,3 +133,23 @@ def test_save_panel_flavor_rejects_invalid_values(
     assert menubar_prefs._save_panel_flavor(flavor) is False
     assert preferences_file.exists() is False
     assert menubar_prefs._panel_flavor() == "mocha"
+
+
+@pytest.mark.parametrize(
+    "value, expected",
+    [(None, 3), (4, 4), (5, 5), (9, 5), (0, 1), (True, 3), ("4", 3), (4.0, 3)],
+)
+def test_menubar_max_items_clamps_and_ignores_invalid_values(value: object, expected: int) -> None:
+    preferences = {} if value is None else {"menubar_max_items": value}
+
+    assert menubar_prefs._menubar_max_items(preferences) == expected
+
+
+@pytest.mark.parametrize(
+    "value, weekly",
+    [(None, False), ("session", False), ("weekly", True), ("WEEKLY", False), (True, False)],
+)
+def test_muse_menubar_weekly_requires_the_exact_value(value: object, weekly: bool) -> None:
+    preferences = {} if value is None else {"muse_menubar_window": value}
+
+    assert menubar_prefs._muse_menubar_weekly(preferences) is weekly

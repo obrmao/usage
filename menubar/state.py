@@ -182,6 +182,8 @@ class PopoverState:
     agy_stale: AgyStaleState | None = None
     grok_stale: GrokStaleState | None = None
     card_order: tuple[str, ...] = ("claude", "codex", "agy", "grok", "muse")
+    menubar_max_items: int = 3
+    muse_menubar_weekly: bool = False
     history_error: HistoryLoadErrorState | None = None
     refresh_status: tuple[str, bool] | None = None
     refresh_queued: bool = False
