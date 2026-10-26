@@ -149,6 +149,24 @@ def statusline_action_in_background(app: _ActionApp, action: str) -> None:
     )
 
 
+def export_history_in_background(app: _ActionApp) -> None:
+    from ui.history_report import save_history_report
+
+    result: dict[str, str | bool]
+    try:
+        saved = save_history_report("pdf")
+        result = {"success": True, "message": saved}
+    except Exception as exc:
+        if os.environ.get("USAGE_DEBUG") == "1":
+            logger.warning("history export failed", exc_info=True)
+        result = {"success": False, "message": f"{type(exc).__name__}: {exc}"}
+    app.performSelectorOnMainThread_withObject_waitUntilDone_(
+        "_finishExportHistory:",
+        result,
+        False,
+    )
+
+
 def analyze_usage_in_background(app: _ActionApp, period: str) -> None:
     from menubar.app import _generate_analysis_report
 

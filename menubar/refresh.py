@@ -35,7 +35,7 @@ from menubar.prefs import (
     _muse_menubar_weekly,
     _quota_card_order,
 )
-from quota import quota_snapshot
+from quota import quota_history, quota_snapshot
 from quota.burn_rate import BurnRateTracker
 from quota.usage_rate import UsageRateTracker
 from usage_common.service_status import CLAUDE_STATUS, CODEX_STATUS, get_service_status
@@ -294,6 +294,7 @@ def build_result(app: _RefreshApp, sources: RefreshSources) -> dict[str, Any]:
     state.muse_menubar_weekly = _muse_menubar_weekly()
     if not app.mock:
         quota_snapshot.write_snapshot()
+        quota_history.record_from_state(state)
     return {
         "state": state,
         "codex_5h_pct": codex_5h_pct,

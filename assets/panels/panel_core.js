@@ -189,6 +189,7 @@
     document.head.appendChild(periodTotalStyle);
     let currentLanguage = "en";
     let projectRange = "1d";
+    let historyRange = "7d";
     let latestState = null;
 
     function languageTable(language) {
@@ -213,6 +214,80 @@
       if (range === "30d") return t("project_range_30d");
       if (range === "all") return t("project_range_all");
       return t("project_range_1d");
+    }
+
+    const HISTORY_RANGES = { "24h": 86400, "7d": 604800, "30d": 2592000 };
+    const HISTORY_PROVIDERS = {
+      claude: ["Claude", "#f49164"], codex: ["Codex", "#58d6e6"],
+      agy: ["Antigravity", "#7ac74f"], grok: ["Grok", "#9a9aa2"], muse: ["Muse", "#9a9aa2"],
+    };
+
+    function historyTimeLabel(ts, range) {
+      const d = new Date(ts * 1000);
+      if (range === "24h") return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      return d.toLocaleDateString([], { day: "numeric", month: "short" });
+    }
+
+    function historyChart(session, weekly, color, start, end) {
+      const W = 340, H = 118, L = 32, R = 6, T = 10, B = 96;
+      const span = Math.max(1, end - start);
+      const X = (ts) => L + ((ts - start) / span) * (W - L - R);
+      const Y = (v) => T + (1 - Math.max(0, Math.min(100, v)) / 100) * (B - T);
+      const line = (pts, dashed) => pts.length < 2 ? "" :
+        `<polyline points="${pts.map(([ts, v]) => `${X(ts).toFixed(1)},${Y(v).toFixed(1)}`).join(" ")}" fill="none" stroke="${color}" stroke-width="${dashed ? 1.4 : 2}" ${dashed ? 'stroke-dasharray="5 4" opacity="0.7"' : ""} stroke-linejoin="round"/>`;
+      const area = session.length < 2 ? "" :
+        `<path d="M${session.map(([ts, v]) => `${X(ts).toFixed(1)},${Y(v).toFixed(1)}`).join(" L")} L${X(session[session.length - 1][0]).toFixed(1)},${B} L${X(session[0][0]).toFixed(1)},${B} Z" fill="${color}" opacity="0.10"/>`;
+      const peakSrc = session.length ? session : weekly;
+      const peak = peakSrc.length ? peakSrc.reduce((a, b) => (b[1] > a[1] ? b : a)) : null;
+      const peakMark = peak ? `<circle cx="${X(peak[0]).toFixed(1)}" cy="${Y(peak[1]).toFixed(1)}" r="3" fill="${color}"/><text x="${Math.min(W - 30, Math.max(L + 14, X(peak[0]))).toFixed(1)}" y="${Math.max(9, Y(peak[1]) - 6).toFixed(1)}" text-anchor="middle" font-size="8.5" fill="currentColor" opacity="0.75">${Math.round(peak[1])}%</text>` : "";
+      const dots = session.length > 1 && session.length <= 60 ? session.map(([ts, v]) => `<circle cx="${X(ts).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="1.8" fill="${color}"/>`).join("") : "";
+      const grid = [0, 25, 50, 75, 100].map((v) =>
+        `<line x1="${L}" y1="${Y(v)}" x2="${W - R}" y2="${Y(v)}" stroke="currentColor" opacity="${v === 100 ? 0.25 : 0.10}"/><text x="${L - 4}" y="${Y(v) + 3}" text-anchor="end" font-size="8.5" fill="currentColor" opacity="0.55">${v}</text>`).join("");
+      const ticks = [start, start + span / 2, end].map((ts) =>
+        `<text x="${X(ts).toFixed(1)}" y="110" text-anchor="middle" font-size="8.5" fill="currentColor" opacity="0.55">${historyTimeLabel(ts, historyRange)}</text>`).join("");
+      return `<svg viewBox="0 0 ${W} ${H}" width="100%" aria-hidden="true">${grid}${area}${line(weekly, true)}${line(session, false)}${dots}${peakMark}${ticks}</svg>`;
+    }
+
+    function renderHistory(series) {
+      const wrap = document.querySelector("main.wrap");
+      const projects = document.querySelector('[data-card="projects"]');
+      if (!wrap) return;
+      let card = document.querySelector('[data-card="history"]');
+      if (!series || series.length === 0) { if (card) card.hidden = true; return; }
+      if (!card) {
+        card = document.createElement("section");
+        card.className = "card";
+        card.dataset.card = "history";
+        card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h1 style="font-size:15px;margin:0">History</h1><div style="display:inline-flex;gap:2px;padding:2px;border:1px solid rgba(127,127,127,0.35);border-radius:999px">${["24h", "7d", "30d"].map((r) => `<button data-action="set-history-range" data-range="${r}" style="font:inherit;font-size:12px;padding:3px 10px;border:0;border-radius:999px;background:transparent;color:inherit;cursor:pointer">${r}</button>`).join("")}</div></div><div data-history-body></div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px"><span style="font-size:11px;color:var(--muted)">— session (5h) &nbsp;┄ weekly &nbsp;·&nbsp; dot = peak in range</span><button data-action="export-history" style="font:inherit;font-size:12px;padding:3px 10px;border:1px solid rgba(127,127,127,0.35);border-radius:999px;background:transparent;color:inherit;cursor:pointer">Export PDF</button></div>`;
+        if (projects) wrap.insertBefore(card, projects); else wrap.appendChild(card);
+      }
+      card.hidden = false;
+      card.querySelectorAll('[data-action="set-history-range"]').forEach((b) => {
+        const active = b.dataset.range === historyRange;
+        b.style.background = active ? "rgba(127,127,127,0.22)" : "transparent";
+        b.style.fontWeight = active ? "600" : "400";
+      });
+      const body = card.querySelector("[data-history-body]");
+      const all = series.flatMap((s) => [...(s.session || []), ...(s.weekly || [])]);
+      const end = all.length ? Math.max(...all.map((p) => p[0])) : 0;
+      const start = end - HISTORY_RANGES[historyRange];
+      const order = Object.keys(HISTORY_PROVIDERS);
+      const rows = [...series].sort((a, b) => order.indexOf(a.provider) - order.indexOf(b.provider)).map((s) => {
+        const [label, color] = HISTORY_PROVIDERS[s.provider] || [s.provider, "#9a9aa2"];
+        const session = (s.session || []).filter((p) => p[0] >= start);
+        const weekly = (s.weekly || []).filter((p) => p[0] >= start);
+        const row = document.createElement("div");
+        if (session.length < 2 && weekly.length < 2) {
+          row.innerHTML = `<div style="display:flex;justify-content:space-between;font-size:12.5px;margin-top:12px"><span><span style="color:${color}">●</span> ${label}</span><span style="color:var(--muted)">no data in range</span></div>`;
+          return row;
+        }
+        const nowS = session.length ? `${Math.round(session[session.length - 1][1])}%` : "–";
+        const nowW = weekly.length ? `${Math.round(weekly[weekly.length - 1][1])}%` : "–";
+        row.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12.5px;margin-top:12px"><span style="font-weight:600"><span style="color:${color}">●</span> ${label}</span><span style="color:var(--muted)">5h <span style="color:inherit">${nowS}</span> · Wk <span style="color:inherit">${nowW}</span></span></div>${historyChart(session, weekly, color, start, end)}`;
+        return row;
+      });
+      body.replaceChildren(...rows);
+      if (typeof window.usageRequestContentHeight === "function") window.usageRequestContentHeight();
     }
 
     function applyStaticText() {
@@ -549,6 +624,7 @@
       renderMuse(state.muse);
       markSingleRowCards();
       renderHistoryLoadError(state.historyError);
+      renderHistory(state.history);
       latestState = state;
       renderProjects(
         projectRange === "1d" ? state.projects
@@ -598,6 +674,11 @@
             window.usageRequestContentHeight();
           }
         }
+        return;
+      }
+      if (button.dataset.action === "set-history-range") {
+        historyRange = HISTORY_RANGES[button.dataset.range] ? button.dataset.range : "7d";
+        if (latestState) renderHistory(latestState.history);
         return;
       }
       const bridge = window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.usage;

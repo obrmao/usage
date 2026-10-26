@@ -425,6 +425,13 @@ class AppDelegate(NSObject):
         )
         thread.start()
 
+    def exportHistory_(self, sender: Any) -> None:
+        thread = threading.Thread(
+            target=self._export_history_in_background,
+            daemon=True,
+        )
+        thread.start()
+
     def quitApp_(self, sender: Any) -> None:
         self._stop_poll_timer()
         NSApp.terminate_(sender)
@@ -930,6 +937,17 @@ class AppDelegate(NSObject):
 
     def _analyze_usage_in_background(self, period: str) -> None:
         menubar_actions.analyze_usage_in_background(self, period)
+
+    def _export_history_in_background(self) -> None:
+        menubar_actions.export_history_in_background(self)
+
+    def _finishExportHistory_(self, result: dict[str, Any]) -> None:
+        if result["success"]:
+            return
+        alert = _make_alert()
+        alert.setMessageText_(_t(self.language, "analysis_failed"))
+        alert.setInformativeText_(str(result["message"]))
+        alert.runModal()
 
     def _finishAnalyzeUsage_(self, result: dict[str, Any]) -> None:
         if result["success"]:

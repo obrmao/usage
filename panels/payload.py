@@ -158,6 +158,7 @@ def _state_payload(
         "hideMuse": state.hide_muse,
         "cardOrder": list(state.card_order),
         "historyError": state.history_error,
+        "history": _history_payload(),
         "footer": {
             "rate": state.rate_text,
             "status": state.status_text,
@@ -170,6 +171,15 @@ def _state_payload(
     if system_accent_color is not None:
         payload["system_accent_color"] = system_accent_color
     return payload
+
+
+def _history_payload() -> list[dict[str, object]]:
+    try:
+        from quota import quota_history
+
+        return quota_history.payload_series()  # type: ignore[return-value]
+    except Exception:
+        return []
 
 
 def _fmt_tokens(tokens: int) -> str:

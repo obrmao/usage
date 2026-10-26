@@ -218,6 +218,8 @@ class UsageScriptBridge(NSObject):
             self.delegate.installHook_(None)
         elif action == "switch":
             self.delegate.switchPanel_(self.web_view)
+        elif action == "export-history":
+            self.delegate.exportHistory_(None)
         elif action == "analyze":
             self.web_view.evaluateJavaScript_completionHandler_(
                 "typeof projectRange === 'string' ? projectRange : '30d'",
